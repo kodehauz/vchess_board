@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * @file
+ * VChess board hooks and functions here.
+ */
+
+use Drupal\Core\Asset\AttachedAssetsInterface;
+
+/**
+ * Implements hook_js_alter().
+ */
+function vchess_board_js_alter(&$javascript, AttachedAssetsInterface $assets) {
+  if (\Drupal::routeMatch()->getRouteName() === 'vchess_board.render') {
+    // Remove the board javascript that comes with vchess module.
+    unset($javascript[drupal_get_path('module', 'vchess') . '/js/board.js']);
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function vchess_board_theme($existing, $type, $theme, $path) {
+  return [
+    'vchess_board' => [
+      'variables' => ['game' => NULL],
+    ],
+  ];
+}

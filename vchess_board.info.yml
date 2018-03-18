@@ -1,0 +1,7 @@
+name: VChess Board
+type: module
+description: VChess Board provides a live board for VChess using Vue.js
+core: 8.x
+dependencies:
+  - vchess
+  - serialization

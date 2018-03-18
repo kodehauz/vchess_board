@@ -1,0 +1,33 @@
+vchess_board.render:
+  path: /vchess/board/{vchess_game}
+  defaults:
+    _controller: \Drupal\vchess_board\BoardController::renderBoard
+  requirements:
+    _permission: 'view game'
+
+vchess_board.game:
+  path: /vchess/board/{vchess_game}/game
+  defaults:
+    _controller: \Drupal\vchess_board\BoardController::getGame
+  requirements:
+    _permission: 'view game'
+  methods:
+    - POST
+
+vchess_board.move:
+  path: /vchess/board/{vchess_game}/move
+  defaults:
+    _controller: \Drupal\vchess_board\BoardController::makeMove
+  requirements:
+    _permission: 'view game'
+  methods:
+    - POST
+
+vchess_board.flip:
+  path: /vchess/board/{vchess_game}/flip
+  defaults:
+    _controller: \Drupal\vchess_board\BoardController::flipBoard
+  requirements:
+    _permission: 'view game'
+  methods:
+    - POST
