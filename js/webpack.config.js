@@ -1,11 +1,22 @@
+const webpack = require('webpack');
 const path = require('path');
 
 module.exports = {
-  entry: './src/main.js',
+  entry: {
+    'vchess-board': './src/main.js',
+    'vchess-board.min': './src/main.js',
+  },
+  devtool: 'source-map',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'vchess-board.js'
+    filename: '[name].js'
   },
+  plugins: [
+    new webpack.optimize.UglifyJsPlugin({
+      include: /\.min\.js$/,
+      minimize: true
+    })
+  ],
   module: {
     rules: [
       {
@@ -16,7 +27,7 @@ module.exports = {
   },
   resolve: {
     alias: {
-      'vue$': 'vue/dist/vue.esm.js' // 'vue/dist/vue.common.js' for webpack 1
+      'vue$': 'vue/dist/vue.esm.js',
     }
   }
 };

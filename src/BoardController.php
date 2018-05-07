@@ -15,7 +15,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
-use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * Allows the VueJS front end to interact with the VChess game entity.
@@ -23,12 +23,8 @@ use Symfony\Component\Serializer\Serializer;
 class BoardController extends ControllerBase {
 
   /**
-   * @var \Symfony\Component\Serializer\Serializer
-   */
-  protected $serializer;
-
-  /**
-   * @var \Symfony\Component\Serializer\Normalizer\NormalizerInterface|\Symfony\Component\Serializer\Normalizer\SerializerAwareNormalizer
+   * @var \Symfony\Component\Serializer\Normalizer\NormalizerInterface|
+   *      \Symfony\Component\Serializer\Normalizer\SerializerAwareNormalizer
    */
   protected $normalizer;
 
@@ -42,8 +38,7 @@ class BoardController extends ControllerBase {
   /**
    * Creates a new controller with normalizer for serializing the game board.
    */
-  public function __construct(Serializer $serializer, NormalizerInterface $normalizer, StateInterface $state) {
-    $this->serializer = $serializer;
+  public function __construct(SerializerInterface $serializer, NormalizerInterface $normalizer, StateInterface $state) {
     $this->normalizer = $normalizer;
     $this->normalizer->setSerializer($serializer);
     $this->state = $state;
@@ -55,7 +50,7 @@ class BoardController extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('serializer'),
-      $container->get('serializer.normalizer.content_entity'),
+      $container->get('serializer.normalizer.vchess_game'),
       $container->get('state')
     );
   }
@@ -124,6 +119,18 @@ class BoardController extends ControllerBase {
             break;
         }
       }
+
+      if (isset($post['board_flipped'])) {
+        // Update board position.
+        $gid = $vchess_game->id();
+        $uid = $this->currentUser()->id();
+        $vchess_board = $this->state->get('vchess_board', []);
+        $vchess_board['flipped'][$gid][$uid] = $post['board_flipped'];
+        $this->state->set('vchess_board', $vchess_board);
+      }
+
+      // Save board time left.
+      $vchess_game->save();
     }
     catch (\Exception $e) {
       $messages[] = $e->getMessage();
@@ -149,6 +156,7 @@ class BoardController extends ControllerBase {
     $post = Json::decode($request->getContent());
     $messages = [];
     $errors = [];
+    $saved = NULL;
     try {
       // Verify that it is the user's turn to play.
       $user = User::load($this->currentUser()->id());
@@ -180,11 +188,21 @@ class BoardController extends ControllerBase {
           // Only save move and game if a move has actually been made.
           if ($move_made) {
             // Save game.
-            $vchess_game->save();
+            $saved = $vchess_game->save();
+            // Invalidate the cache immediately instead of waiting for request
+            // to terminate to avoid deadlock.
+            // @todo Find a better a way to fix this.
+            $this->entityTypeManager()
+              ->getStorage('vchess_game')
+              ->resetCache([$vchess_game->id()]);
+            $vchess_game = Game::load($vchess_game->id());
             if ($vchess_game->getStatus() !== GamePlay::STATUS_IN_PROGRESS) {
               GamerStatistics::updatePlayerStatistics($vchess_game);
             }
-
+          }
+          else {
+            // Add the errors to the messages.
+            $messages = array_merge($messages, $errors);
           }
         }
         else {
@@ -201,6 +219,7 @@ class BoardController extends ControllerBase {
 
     return new JsonResponse([
       'game' => $this->getNormalizedGame($vchess_game),
+      'saved' => $saved,
       'messages' => implode("\n", $messages),
     ]);
   }
@@ -209,23 +228,6 @@ class BoardController extends ControllerBase {
    * Flips the game board.
    */
   public function flipBoard(Request $request, Game $vchess_game) {
-    $post = Json::decode($request->getContent());
-    $gid = $vchess_game->id();
-
-    $vchess_board = $this->state->get('vchess_board', []);
-    $vchess_board['flipped'][$gid] = $post['board_flipped'];
-    $this->state->set('vchess_board', $vchess_board);
-
-    // Save board time left.
-    $vchess_game
-      ->setWhiteTimeLeft($post['white_time_left'])
-      ->setBlackTimeLeft($post['black_time_left'])
-      ->save();
-
-    return new JsonResponse([
-      'game' => $this->getNormalizedGame($vchess_game),
-      'messages' => $this->t('Board is flipped'),
-    ]);
   }
 
   /**
@@ -239,7 +241,7 @@ class BoardController extends ControllerBase {
    */
   protected function getNormalizedGame(Game $game) {
     $board = (new NormalizableBoard())->setupPosition($game->getBoard());
-    return $this->normalizer->normalize($game) + [
+    return $this->normalizer->normalize($game, 'json') + [
       'pieces' => $board->getNormalizedBoard(),
       'boardFlipped' => $this->isBoardFlipped($game),
       'usernames' => $this->getPlayerNames($game),
@@ -271,8 +273,9 @@ class BoardController extends ControllerBase {
   protected function isBoardFlipped(Game $game) {
     // Check orientation of board.
     $gid = $game->id();
+    $uid = $this->currentUser()->id();
     $vchess_board = $this->state->get('vchess_board', []);
-    return isset($vchess_board['flipped'][$gid]) && $vchess_board['flipped'][$gid] === TRUE;
+    return isset($vchess_board['flipped'][$gid][$uid]) && $vchess_board['flipped'][$gid][$uid] === TRUE;
   }
 
   /**

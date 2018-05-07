@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <input id="flip-board" name="flip_board" type="checkbox" value="Flip board" v-bind:checked="game.boardFlipped" v-on:click="flipBoard()"/>
+    <input id="flip-board" name="flip_board" type="checkbox" value="Flip board" v-on:click="flipBoard()" v-bind:checked="game.boardFlipped"/>
     <label for="flip-board">Flip board</label>
 
   </div>
@@ -73,8 +73,8 @@
 
       // Confirms that the current user should be able to make moves.
       isActive() {
-        return (this.game.turn.value === 'w' && this.game.white_uid.target_id === this.user)
-          || (this.game.turn.value === 'b' && this.game.black_uid.target_id === this.user)
+        return (this.game.turn === 'w' && this.game.white_uid === this.user)
+          || (this.game.turn === 'b' && this.game.black_uid === this.user)
       },
 
       playMove() {
@@ -93,21 +93,11 @@
 
           // If pawn enters last line ask for promotion.
           if (move[0] === 'P' && (to_rank === '8' || to_rank === '1')) {
-            if (confirm('Promote to Queen? (Press Cancel for other options)')) {
-              move = move + '=Q';
-            }
-            else if (confirm('Promote to Rook? (Press Cancel for other options)')) {
-              move = move + '=R';
-            }
-            else if (confirm('Promote to Bishop? (Press Cancel for other options)')) {
-              move = move + '=B';
-            }
-            else if (confirm('Promote to Knight? (Press Cancel to abort move)')) {
-              move = move + '=N';
-            }
-            else {
+            let promo = this.promotionDialog();
+            if (promo === false) {
               return;
             }
+            move = move + promo;
           }
           this.savedMove = move;
           this.$emit('submit-move', this.savedMove);
@@ -116,13 +106,13 @@
         }
       },
 
+      promotionDialog() {
+
+      }
+
       flipBoard() {
         this.game.boardFlipped = !this.game.boardFlipped;
-        this.$emit('board-flipped');
-      },
-
-      reloadBoard() {
-
+        this.$emit('fast-refresh');
       },
 
       getPiece(row, column) {
@@ -163,10 +153,10 @@
       },
 
       getPlayerColor () {
-        if (this.game.white_uid.target_id === this.user) {
+        if (this.game.white_uid === this.user) {
           return 'w';
         }
-        if (this.game.black_uid.target_id === this.user) {
+        if (this.game.black_uid === this.user) {
           return 'b';
         }
         return '';
@@ -252,8 +242,7 @@
       },
 
       adjustFlipped(row) {
-        const playerColor = this.getPlayerColor();
-        if ((playerColor === 'w' && !this.game.boardFlipped) || (playerColor === 'b' && this.game.boardFlipped)) {
+        if (this.getColorAtBottom() === 'w') {
           return 9 - row;
         }
         else {
@@ -264,11 +253,21 @@
       // Gets which player color is at the bottom of the table.
       getColorAtBottom() {
         const playerColor = this.getPlayerColor();
-        if ((playerColor === 'w' && !this.game.boardFlipped) || (playerColor === 'b' && this.game.boardFlipped)) {
-          return 'w';
+        if (this.game.boardFlipped) {
+          if (playerColor === 'b') {
+            return 'w';
+          }
+          else {
+            return 'b';
+          }
         }
         else {
-          return 'b';
+          if (playerColor === 'b') {
+            return 'b';
+          }
+          else {
+            return 'w';
+          }
         }
       },
 

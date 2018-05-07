@@ -1,23 +1,23 @@
 <template>
-  <div id="vchess-game-clock" class="vchess-game-clock">
-    <div class="vchess-game-clock">
-
-      <h1 class="visually-hidden">Game Timer</h1>
-
+  <div class="game-timer">
+    <div class="visually-hidden" id="controls">
+      <h1>Game Timer</h1>
     </div>
 
-    <div class="col-md-6">
-      <div class="time-container" id="left">
-        <span>{{ game.usernames.white }}</span>
+    <div class="time-container left">
+      <div>
+        {{ game.usernames.white }}
+      </div>
+      <div class="time-display" :class="getActiveClass('w')">
         <span>{{ whiteHms.hrs }}:{{ whiteHms.min }}:{{ whiteHms.sec }}</span>
       </div>
     </div>
 
-    <div class="col-md-6">
-      <h1><span id="cdtime"></span></h1>
-
-      <div class="time-container" id="right">
-        <span>{{ game.usernames.black }}</span>
+    <div class="time-container right">
+      <div>
+        {{ game.usernames.black }}
+      </div>
+      <div class="time-display" :class="getActiveClass('b')">
         <span>{{ blackHms.hrs }}:{{ blackHms.min }}:{{ blackHms.sec }}</span>
       </div>
     </div>
@@ -34,16 +34,16 @@
 
     mounted() {
       // Initialize timer times and update the displays.
-      this.whiteTimer.timeleft = this.game.white_time_left.value;
-      this.blackTimer.timeleft = this.game.black_time_left.value;
+      this.whiteTimer.timeleft = this.game.white_time_left;
+      this.blackTimer.timeleft = this.game.black_time_left;
 
       this.whiteHms = this.calculateHrsMinSec(this.whiteTimer.timeleft);
       this.blackHms = this.calculateHrsMinSec(this.blackTimer.timeleft);
 
-      if (this.game.turn.value === 'w' && this.game.white_uid.target_id === this.user) {
+      if (this.game.turn === 'w' && this.game.white_uid === this.user) {
         this.startTimer(this.whiteTimer);
       }
-      if (this.game.turn.value === 'b' && this.game.black_uid.target_id === this.user) {
+      if (this.game.turn === 'b' && this.game.black_uid === this.user) {
         this.startTimer(this.blackTimer);
       }
       window.setInterval(this.updateTimeLeft, 1000);
@@ -61,18 +61,18 @@
     watch: {
       game(game, oldgame) {
         // Update the time left for both timers.
-        this.whiteTimer.timeleft = this.game.white_time_left.value;
-        this.blackTimer.timeleft = this.game.black_time_left.value;
+        this.whiteTimer.timeleft = this.game.white_time_left;
+        this.blackTimer.timeleft = this.game.black_time_left;
 
         // Start the timer that is currently active.
-        if ((game.turn.value === 'w' && game.white_uid.target_id === this.user)) {
+        if ((game.turn === 'w' && game.white_uid === this.user)) {
           this.startTimer(this.whiteTimer);
         }
         else {
           this.stopTimer(this.whiteTimer);
         }
 
-        if ((game.turn.value === 'b' && game.black_uid.target_id === this.user)) {
+        if ((game.turn === 'b' && game.black_uid === this.user)) {
           this.startTimer(this.blackTimer);
         }
         else {
@@ -93,8 +93,8 @@
         this.blackHms = this.updateTimer(this.blackTimer);
 
         // Update the game object.
-        this.game.white_time_left.value = this.whiteTimer.timeleft;
-        this.game.black_time_left.value = this.blackTimer.timeleft;
+        this.game.white_time_left = this.whiteTimer.timeleft;
+        this.game.black_time_left = this.blackTimer.timeleft;
       },
 
       startTimer(timer) {
@@ -127,6 +127,14 @@
         if (hms.sec < 10) hms.sec = '0' + hms.sec;
 
         return hms;
+      },
+
+      getActiveClass(color) {
+        if ((color === 'w' && this.game.white_uid === this.user)
+            || (color === 'b' && this.game.black_uid === this.user)) {
+          return 'active';
+        }
+        return '';
       }
 
     }

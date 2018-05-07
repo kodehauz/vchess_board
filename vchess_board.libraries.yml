@@ -21,4 +21,5 @@ board-compiled:
     js/dist/vchess-board.js: {}
   dependencies:
     - vchess/board
+    - vchess/game_timer
     - core/drupalSettings

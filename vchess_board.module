@@ -12,8 +12,10 @@ use Drupal\Core\Asset\AttachedAssetsInterface;
  */
 function vchess_board_js_alter(&$javascript, AttachedAssetsInterface $assets) {
   if (\Drupal::routeMatch()->getRouteName() === 'vchess_board.render') {
-    // Remove the board javascript that comes with vchess module.
-    unset($javascript[drupal_get_path('module', 'vchess') . '/js/board.js']);
+    // Remove the javascript files that comes with vchess module.
+    $vchess_path = drupal_get_path('module', 'vchess');
+    unset($javascript[$vchess_path . '/js/board.js'],
+          $javascript[$vchess_path . '/js/game-timer.js']);
   }
 }
 

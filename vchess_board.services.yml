@@ -1,0 +1,6 @@
+services:
+  serializer.normalizer.vchess_game:
+      class: Drupal\vchess_board\VChessGameNormalizer
+      tags:
+        - { name: normalizer }
+      arguments: ['@entity.manager']
