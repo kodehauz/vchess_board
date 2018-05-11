@@ -46,12 +46,18 @@
     <input id="flip-board" name="flip_board" type="checkbox" value="Flip board" v-on:click="flipBoard()" v-bind:checked="game.boardFlipped"/>
     <label for="flip-board">Flip board</label>
 
+    <promotion-dialog v-show="dialogOpen" @dialog-closed="hideDialog" default="Q"/>
   </div>
 
 </template>
 
 <script>
+  import PromotionDialog from './PromotionDialog.vue';
+
   export default {
+
+    components: { PromotionDialog },
+
     props: {
       game: Object,
       caption: null,
@@ -66,6 +72,8 @@
           destination: "",
         },
         savedMove: "",
+        dialogOpen: false,
+        promotion: "Q",
       }
     },
 
@@ -77,7 +85,7 @@
           || (this.game.turn === 'b' && this.game.black_uid === this.user)
       },
 
-      playMove() {
+      async playMove() {
         if (this.savedMove !== "") {
           let move = this.savedMove;
           const move_type = move[3];
@@ -93,11 +101,19 @@
 
           // If pawn enters last line ask for promotion.
           if (move[0] === 'P' && (to_rank === '8' || to_rank === '1')) {
-            let promo = this.promotionDialog();
-            if (promo === false) {
+            this.dialogOpen = true;
+            // Wait until the user dismisses the dialog.
+            while (this.dialogOpen) {
+              await this.wait(500);
+            }
+
+            // If the promotion is cancelled, assume the move is not committed.
+            if (this.promotion === 'cancel') {
+              this.highlightMove();
               return;
             }
-            move = move + promo;
+
+            move += '=' + this.promotion;
           }
           this.savedMove = move;
           this.$emit('submit-move', this.savedMove);
@@ -106,9 +122,15 @@
         }
       },
 
-      promotionDialog() {
+      // wait ms milliseconds
+      wait(ms) {
+        return new Promise(r => setTimeout(r, ms));
+      },
 
-      }
+      hideDialog(value) {
+        this.promotion = value;
+        this.dialogOpen = false;
+      },
 
       flipBoard() {
         this.game.boardFlipped = !this.game.boardFlipped;

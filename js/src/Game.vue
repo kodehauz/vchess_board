@@ -8,7 +8,7 @@
     <div class="game-right-side">
       <MoveList :moves="game.moves" />
     </div>
-    <div class="clear">
+    <div class="clear messages">
       <div>{{ lastMessage }}</div>
       <ul v-if="messages.length > 0">
         <li v-for="message in messages">{{ message }}</li>
@@ -124,7 +124,6 @@ export default {
       axios
         .post(this.apiUrl + '/move', body)
         .then((response) => {
-          console.log(this);
           if (response.data.game) {
             this.game = response.data.game;
           }
@@ -171,5 +170,9 @@ export default {
     float: none;
     clear: both;
     display: block;
+  }
+
+  .messages {
+    display: none;
   }
 </style>
