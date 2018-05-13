@@ -106,7 +106,7 @@
         // Only update if the clock is enabled.
         if (timer.enabled) {
           // Ensure negative number doesn't get assigned.
-          timer.timeleft = Math.max(timer.outlook - new Date().getTime() / 1000, 0);
+          timer.timeleft = Math.max(0, timer.outlook - new Date().getTime() / 1000);
         }
         return this.calculateHrsMinSec(timer.timeleft);
       },
@@ -118,6 +118,8 @@
 
       calculateHrsMinSec(timeleft) {
         let hms = {};
+        // Negative times should be displayed as zero.
+        timeleft = Math.max(0, timeleft);
         hms.hrs = Math.floor(timeleft / 3600).toString();
         hms.min = Math.floor((timeleft % 3600) / 60).toString();
         hms.sec = Math.floor(timeleft % 60).toString();

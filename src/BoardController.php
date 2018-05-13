@@ -104,7 +104,7 @@ class BoardController extends ControllerBase {
       // Update the game clocks.
       $post = Json::decode($request->getContent());
       $user = User::load($this->currentUser()->id());
-      if (isset($post['white_time_left'], $post['white_time_left']) && $vchess_game->isPlayersMove($user)) {
+      if (isset($post['white_time_left'], $post['black_time_left']) && $vchess_game->isPlayersMove($user)) {
         switch ($vchess_game->getPlayerColor($user)) {
           case 'w':
             $vchess_game
@@ -118,6 +118,9 @@ class BoardController extends ControllerBase {
               ->save();
             break;
         }
+
+        // Save board time left.
+        $vchess_game->save();
       }
 
       if (isset($post['board_flipped'])) {
@@ -128,9 +131,6 @@ class BoardController extends ControllerBase {
         $vchess_board['flipped'][$gid][$uid] = $post['board_flipped'];
         $this->state->set('vchess_board', $vchess_board);
       }
-
-      // Save board time left.
-      $vchess_game->save();
     }
     catch (\Exception $e) {
       $messages[] = $e->getMessage();
@@ -160,11 +160,15 @@ class BoardController extends ControllerBase {
     try {
       // Verify that it is the user's turn to play.
       $user = User::load($this->currentUser()->id());
-      if ($vchess_game->isPlayersMove($user)) {
+      if ($vchess_game->getStatus() === GamePlay::STATUS_AWAITING_PLAYERS) {
+        $messages[] = $this->t('Game is awaiting players');
+      }
+      else if ($vchess_game->getStatus() !== GamePlay::STATUS_IN_PROGRESS) {
+        $messages[] = $this->t('Game is over');
+      }
+      else if ($vchess_game->isPlayersMove($user)) {
         // Command: e.g. Pe2-e4
         if ($cmd = $post['cmd']) {
-          /** @var \Drupal\vchess\Entity\Move $move */
-          $move = Move::create()->setLongMove($cmd);
           $gameplay = new GamePlay($vchess_game);
 
           if ($cmd === 'abort') {
@@ -177,6 +181,8 @@ class BoardController extends ControllerBase {
             $move_made = $gameplay->rejectDraw($user, $messages, $errors);
           }
           else { // try as chess move
+            /** @var \Drupal\vchess\Entity\Move $move */
+            $move = Move::create()->setLongMove($cmd);
             $move_made = $gameplay->makeMove($user, $move, $messages, $errors);
           }
 
@@ -189,12 +195,6 @@ class BoardController extends ControllerBase {
           if ($move_made) {
             // Save game.
             $saved = $vchess_game->save();
-            // Invalidate the cache immediately instead of waiting for request
-            // to terminate to avoid deadlock.
-            // @todo Find a better a way to fix this.
-            $this->entityTypeManager()
-              ->getStorage('vchess_game')
-              ->resetCache([$vchess_game->id()]);
             $vchess_game = Game::load($vchess_game->id());
             if ($vchess_game->getStatus() !== GamePlay::STATUS_IN_PROGRESS) {
               GamerStatistics::updatePlayerStatistics($vchess_game);

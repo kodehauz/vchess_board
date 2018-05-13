@@ -61,7 +61,8 @@ export default {
     refreshGame(reEnableRefresh = null) {
       // Don't try to refresh if we are already refreshing or refreshing is
       // disabled (e.g. if submitting a move).
-      if (this.refreshing || this.refreshDisabled) {
+      // Also, there is no need to refresh a game that has ended.
+      if (this.refreshing || this.refreshDisabled || this.game.status !== 'in progress') {
         return;
       }
       this.refreshing = true;
